@@ -1,0 +1,443 @@
+# This Python 3 environment comes with many helpful analytics libraries installed
+# It is defined by the kaggle/python docker image: https://github.com/kaggle/docker-python
+# For example, here's several helpful packages to load in
+
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import matplotlib.pyplot as plt # for data visualization purposes
+import seaborn as sns # for statistical data visualization
+%matplotlib inline
+
+
+import warnings
+warnings.filterwarnings('ignore')
+data = 'data_set_synthetic_final2.csv'
+df = pd.read_csv(data)
+
+# view dimensions of dataset
+df.shape
+# preview the dataset
+df.head()
+
+**DATA CLEANUP**
+
+col_names = ['person', 'fridge', 'fridge_total', 'dishwasher', 'dishwasher_total', 'washing_machine', 'washing_machine_total','electric_stove', 'electric_stove_total', 'clothes_dryer', 'clothes_dryer_total', 'tv', 'tv_total', 'microwave', 'microwave_total',
+             'kettle', 'kettle__total', 'coffee_machine', 'coffee_machine_total', 'lamps', 'lamps_total', 'electric_car', 'total_kw', 'occupancy', 'heating_hours_on', 'night_saver_meter', 'energy_rate', 'price_category']
+
+df.columns = col_names
+
+df.columns
+
+# view summary of dataset
+
+df.info()
+
+# find categorical variables
+
+categorical = [var for var in df.columns if df[var].dtype=='O']
+
+print('There are {} categorical variables\n'.format(len(categorical)))
+
+print('The categorical variables are :\n\n', categorical)
+
+# view the categorical variables
+# shows the categories that have string values and not numerical
+
+df[categorical].head()
+
+# check missing values in categorical variables
+# will come up as 0 for each, as their values are string values and not numerical
+
+df[categorical].isnull().sum()
+
+# Import seaborn
+import seaborn as sn
+sn.scatterplot(x=df['heating_hours_on'], y=df['total_kw']);
+#sn.regplot(x=dataset['Weight'], y=dataset['Age'])
+
+# view frequency counts of values in categorical variables
+# how many of each appears in each column
+for var in categorical:
+
+    print(df[var].value_counts())
+
+# view frequency distribution of categorical variables
+# how many each one appears in each column as a percentage out of them all
+for var in categorical:
+
+    print(df[var].value_counts()/np.float(len(df)))
+
+# check labels in night_saver_meter variable
+
+df.night_saver_meter.unique()
+
+# check frequency distribution of values in night_saver_meter variable
+
+df.night_saver_meter.value_counts()
+
+# replace '?' values in night_saver_meter variable with `NaN`
+# will have no affect, all values are either y or n
+df['night_saver_meter'].replace('?', np.NaN, inplace=True)
+
+# again check the frequency distribution of values in night_saver_meter variable
+
+df.night_saver_meter.value_counts()
+
+# check labels in energy_rate variable
+
+df.energy_rate.unique()
+
+# check frequency distribution of values in energy_rate variable
+
+df.energy_rate.value_counts()
+
+# replace '?' values in energy_rate variable with `NaN`
+# no changes as the data has no values apart from the string: a,b,c,d,e
+
+df['energy_rate'].replace('?', np.NaN, inplace=True)
+
+# again check the frequency distribution of values in energy_rate variable
+
+df.energy_rate.value_counts()
+
+df[categorical].isnull().sum()
+
+# check for cardinality in categorical variables
+# confirm the amount of different answers (options) in each category
+for var in categorical:
+
+    print(var, ' contains ', len(df[var].unique()), ' labels')
+
+# find numerical variables
+# will list all the categoires that have numerical values in
+
+numerical = [var for var in df.columns if df[var].dtype!='O']
+
+print('There are {} numerical variables\n'.format(len(numerical)))
+
+print('The numerical variables are :', numerical)
+
+# view the numerical variables
+# viewing the top 10 data sets
+df[numerical].head(10)
+
+# check missing values in numerical variables
+
+df[numerical].isnull().sum()
+
+Split Data into Training & Testing datasets
+
+#this is where lost
+#should be price category, thats for X axis?
+#i know the axis at the bottom will help measure/categorise it
+
+# to test if occupany can be used to predict other variables
+# the price_categories
+X = df.drop(['night_saver_meter'], axis=1)
+
+y = df['night_saver_meter']
+
+
+# split X and y into training and testing sets
+# chosing a 70/30 split
+
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3, random_state = 0)
+
+## check the shape of X_train and X_test
+
+X_train.shape, X_test.shape
+
+Further Data Processing
+
+# check data types in X_train
+# confirming their types, no changes
+X_train.dtypes
+
+# display categorical variables
+
+categorical = [col for col in X_train.columns if X_train[col].dtypes == 'O']
+
+categorical
+
+# display numerical variables
+
+numerical = [col for col in X_train.columns if X_train[col].dtypes != 'O']
+
+numerical
+
+# print percentage of missing values in the categorical variables in training set
+
+X_train[categorical].isnull().mean()
+
+# print categorical variables with missing data
+# nothing will come back as all values are 0, as string (a,b,c,d,e) are their values
+
+for col in categorical:
+    if X_train[col].isnull().mean()>0:
+        print(col, (X_train[col].isnull().mean()))
+
+# impute missing categorical variables with most frequent value
+
+for df2 in [X_train, X_test]:
+    df2['heating_hours_on'].fillna(X_train['heating_hours_on'].mode()[0], inplace=True)
+
+# print percentage of missing values in the categorical variables in training set
+# same as before
+X_train[categorical].isnull().mean()
+
+# check missing values in categorical variables in X_test
+
+X_test[categorical].isnull().sum()
+
+# check missing values in X_test
+
+X_test.isnull().sum()
+
+# print categorical variables
+
+categorical
+
+# display results of trained machine
+X_train[categorical].head()
+
+Encode Categorial Data into Numbers
+
+# import category encoders
+!pip install category_encoders
+from sklearn import preprocessing
+import category_encoders as ce
+
+# encode remaining variables with one-hot encoding
+# only categorical eg y/n, all others numerical value (yet hours_heating_on is categorial, only 5 possabilities)
+encoder = ce.OneHotEncoder(cols=['price_category'])
+
+X_train = encoder.fit_transform(X_train)
+
+X_test = encoder.transform(X_test)
+
+X_train.head()
+
+X_train.shape
+
+X_test.head()
+
+X_test.shape
+
+cols = X_train.columns
+
+from sklearn.preprocessing import RobustScaler
+
+scaler = RobustScaler()
+
+X_train = scaler.fit_transform(X_train)
+
+X_test = scaler.transform(X_test)
+
+X_train = pd.DataFrame(X_train, columns=[cols])
+
+X_test = pd.DataFrame(X_test, columns=[cols])
+
+X_train.head()
+
+y_train.head()
+
+# train a Gaussian Naive Bayes classifier on the training set
+from sklearn.naive_bayes import GaussianNB
+#from sklearn.neighbors import KNeighborsClassifier
+
+# instantiate the model
+gnb = GaussianNB()
+#gnb = KNeighborsClassifier(3)
+
+# fit the model
+gnb.fit(X_train, y_train)
+
+Predict Y based on X variables
+
+y_pred = gnb.predict(X_test)
+
+y_pred
+
+Determine Accuracy
+
+from sklearn.metrics import accuracy_score
+
+print('Model accuracy score: {0:0.4f}'. format(accuracy_score(y_test, y_pred)))
+
+y_pred_train = gnb.predict(X_train)
+
+y_pred_train
+
+print('Training-set accuracy score: {0:0.4f}'. format(accuracy_score(y_train, y_pred_train)))
+
+Run Predictions on Test Data
+
+# print the scores on training and test set
+
+print('Training set score: {:.4f}'.format(gnb.score(X_train, y_train)))
+
+print('Test set score: {:.4f}'.format(gnb.score(X_test, y_test)))
+
+# check class distribution in test set
+
+y_test.value_counts()
+
+# check null accuracy score
+
+null_accuracy = (7407/(7407+2362))
+
+print('Null accuracy score: {0:0.4f}'. format(null_accuracy))
+
+Accuracy
+
+# Print the Confusion Matrix and slice it into four pieces
+
+from sklearn.metrics import confusion_matrix
+
+cm = confusion_matrix(y_test, y_pred)
+
+print('Confusion matrix\n\n', cm)
+
+print('\nTrue Positives(TP) = ', cm[0,0])
+
+print('\nTrue Negatives(TN) = ', cm[1,1])
+
+print('\nFalse Positives(FP) = ', cm[0,1])
+
+print('\nFalse Negatives(FN) = ', cm[1,0])
+
+# visualize confusion matrix with seaborn heatmap
+
+cm_matrix = pd.DataFrame(data=cm, columns=['Actual Positive:1', 'Actual Negative:0'],
+                                 index=['Predict Positive:1', 'Predict Negative:0'])
+
+sns.heatmap(cm_matrix, annot=True, fmt='d', cmap='YlGnBu')
+
+from sklearn.metrics import classification_report
+
+print(classification_report(y_test, y_pred))
+
+TP = cm[0,0]
+TN = cm[1,1]
+FP = cm[0,1]
+FN = cm[1,0]
+
+# print classification accuracy
+
+classification_accuracy = (TP + TN) / float(TP + TN + FP + FN)
+
+print('Classification accuracy : {0:0.4f}'.format(classification_accuracy))
+
+# print classification error
+
+classification_error = (FP + FN) / float(TP + TN + FP + FN)
+
+print('Classification error : {0:0.4f}'.format(classification_error))
+
+# print precision score
+
+precision = TP / float(TP + FP)
+
+
+print('Precision : {0:0.4f}'.format(precision))
+
+recall = TP / float(TP + FN)
+
+print('Recall or Sensitivity : {0:0.4f}'.format(recall))
+
+true_positive_rate = TP / float(TP + FN)
+
+
+print('True Positive Rate : {0:0.4f}'.format(true_positive_rate))
+
+false_positive_rate = FP / float(FP + TN)
+
+
+print('False Positive Rate : {0:0.4f}'.format(false_positive_rate))
+
+specificity = TN / (TN + FP)
+
+print('Specificity : {0:0.4f}'.format(specificity))
+
+# print the first 10 predicted probabilities of two classes- 0 and 1
+
+y_pred_prob = gnb.predict_proba(X_test)[0:10]
+
+y_pred_prob
+
+# store the probabilities in dataframe
+
+y_pred_prob_df = pd.DataFrame(data=y_pred_prob, columns=['Prob of price_category', 'price_category'])
+
+y_pred_prob_df
+
+# print the first 10 predicted probabilities for class 1 - Probability of price_category
+
+gnb.predict_proba(X_test)[0:10, 1]
+
+# store the predicted probabilities for class 1 - Probability of price_category
+
+y_pred1 = gnb.predict_proba(X_test)[:, 1]
+
+# plot histogram of predicted probabilities
+
+
+# adjust the font size
+plt.rcParams['font.size'] = 12
+
+
+# plot histogram with 10 bins
+plt.hist(y_pred1, bins = 10)
+
+
+# set the title of predicted probabilities
+plt.title('Histogram of predicted probabilities of price category')
+
+
+# set the x-axis limit
+plt.xlim(0,1)
+
+
+# set the title
+plt.xlabel('Predicted probabilities of price category')
+plt.ylabel('Frequency')
+
+# plot ROC Curve
+
+from sklearn.metrics import roc_curve
+
+fpr, tpr, thresholds = roc_curve(y_test, y_pred1, pos_label = 'y')
+
+plt.figure(figsize=(6,4))
+
+plt.plot(fpr, tpr, linewidth=2)
+
+plt.plot([0,1], [0,1], 'k--' )
+
+plt.rcParams['font.size'] = 12
+
+plt.title('ROC curve for Gaussian Naive Bayes Classifier for Predicting Price Category')
+
+plt.xlabel('False Positive Rate (1 - Specificity)')
+
+plt.ylabel('True Positive Rate (Sensitivity)')
+
+plt.show()
+
+# compute ROC AUC
+
+from sklearn.metrics import roc_auc_score
+
+ROC_AUC = roc_auc_score(y_test, y_pred1)
+
+print('ROC AUC : {:.4f}'.format(ROC_AUC))
+
+# calculate cross-validated ROC AUC
+
+from sklearn.model_selection import cross_val_score
+
+Cross_validated_ROC_AUC = cross_val_score(gnb, X_train, y_train, cv=5, scoring='roc_auc').mean()
+
+print('Cross validated ROC AUC : {:.4f}'.format(Cross_validated_ROC_AUC))
